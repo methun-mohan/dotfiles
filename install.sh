@@ -158,4 +158,4 @@ else
   echo "  Open a NEW terminal tab to load the changes."
   [[ $TODO_COUNT -gt 0 ]] && echo "  $TODO_COUNT manual item(s) listed above."
 fi
-echo "  Weekly upkeep: brew update && brew upgrade"
+echo "  Weekly upkeep: ./doctor.sh status, then ./doctor.sh upgrade"

@@ -22,6 +22,7 @@ Then open a **new** terminal tab so the changes load. The script is safe to re-r
 | Path | Purpose |
 | --- | --- |
 | `install.sh` | The bootstrap script. Its header comment documents every step. |
+| `doctor.sh` | Day-to-day checks and upgrades: what's outdated, installed versions, patch one package. |
 | `Brewfile` | Single source of truth for every package and app that gets installed. |
 | `githooks/pre-commit` | Runs [gitleaks](https://github.com/gitleaks/gitleaks) on staged changes and blocks commits containing secrets. |
 | `githooks/commit-msg` | Enforces [Conventional Commits](https://www.conventionalcommits.org) (`feat: ...`, `fix(scope): ...`). |
@@ -56,18 +57,24 @@ To undo: `git config --global --unset core.hooksPath`.
 
 ## Staying up to date
 
-Everything is managed by Homebrew, so one command keeps it all current:
+`doctor.sh` is the day-to-day companion to `install.sh`. It reads the same Brewfile.
 
-```bash
-brew update && brew upgrade && brew cleanup && brew autoremove
-```
+| Command | What it does |
+| --- | --- |
+| `./doctor.sh` or `./doctor.sh status` | Refreshes Homebrew, then lists outdated packages, anything missing from the Brewfile, pending macOS updates, and `brew doctor` warnings. |
+| `./doctor.sh versions` | Installed version of every package in the Brewfile. |
+| `./doctor.sh info <pkg>` | Latest version of one package and whether you have it (e.g. `./doctor.sh info node`). |
+| `./doctor.sh upgrade` | Upgrades everything, then runs `brew cleanup` and `brew autoremove`. |
+| `./doctor.sh upgrade <pkg>` | Upgrades just one package. |
+
+**Heard about a vulnerability?** Homebrew has no built-in vulnerability scanner, so start from the advisory. Run `./doctor.sh status` to see whether the fix has reached Homebrew yet. If it has, `./doctor.sh upgrade <pkg>` patches it. Homebrew can trail upstream releases by a few days.
 
 A few things to know:
 
 - Homebrew's `node` follows the newest Node release (an LTS release as of Node 26). Check each spring that it's still LTS, or switch to a versioned formula such as `node@26`.
 - A major Node or Python upgrade can require rebuilding `node_modules` or virtual environments.
 - Use `uv` for Python virtual environments and tools rather than global `pip install`.
-- Homebrew doesn't cover macOS itself (`softwareupdate -l`), global npm packages, or project dependencies. Audit those with each project's own tooling.
+- Homebrew doesn't cover macOS itself (`doctor.sh status` lists pending updates, but install them in System Settings), global npm packages, or project dependencies. Audit those with each project's own tooling.
 
 To add a tool, add it to the `Brewfile` and re-run `./install.sh`.
 
