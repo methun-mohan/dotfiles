@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# commit-msg: enforce Conventional Commits on the first line.
+#   type(optional-scope)!: summary     e.g.  feat(auth): add login
+# Allowed types: feat fix docs style refactor perf test build ci chore revert
+# Bypass (emergency only): git commit --no-verify
+first_line="$(head -n1 "$1")"
+
+# Let git-generated messages through.
+case "$first_line" in
+  Merge\ *|Revert\ *|fixup!\ *|squash!\ *) exit 0 ;;
+esac
+
+pattern='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9_./-]+\))?!?: .{1,72}$'
+if [[ ! "$first_line" =~ $pattern ]]; then
+  echo "Commit blocked: message must follow Conventional Commits." >&2
+  echo "  Format:  type(scope): summary   (summary max 72 chars)" >&2
+  echo "  Example: feat(auth): add login" >&2
+  echo "  Types:   feat fix docs style refactor perf test build ci chore revert" >&2
+  echo "  Yours:   $first_line" >&2
+  exit 1
+fi
