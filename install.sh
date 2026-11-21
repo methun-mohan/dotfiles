@@ -9,12 +9,17 @@
 #   3. Puts brew on your PATH via ~/.zprofile.
 #   4. Installs everything in ./Brewfile (the single source of truth for
 #      packages) with `brew bundle`.
-#   5. Enables the Starship prompt via ~/.zshrc (zsh init, NOT bash).
-#   6. Points git at the hooks in ./githooks (global core.hooksPath):
+#   5. Installs the global CLI tools in ./pnpm-globals.txt with pnpm (e.g. the
+#      Pi coding agent). These use pnpm, not brew, because the tool's own site
+#      documents npm/pnpm as the official route and the brew formula is
+#      community-maintained and can lag. `brew upgrade` does NOT update them:
+#      use `./doctor.sh upgrade` (or `pnpm update -g`).
+#   6. Enables the Starship prompt via ~/.zshrc (zsh init, NOT bash).
+#   7. Points git at the hooks in ./githooks (global core.hooksPath):
 #        - pre-commit: gitleaks scans staged changes for secrets
 #        - commit-msg: enforces Conventional Commits (feat: ..., fix: ...)
 #      Bypass in an emergency with: git commit --no-verify
-#   7. Reminds you about git identity and GitHub login (never sets them for you).
+#   8. Reminds you about git identity and GitHub login (never sets them for you).
 #
 # Usage:
 #   ./install.sh --check   # report what's missing, change nothing
@@ -32,6 +37,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HOOKS_DIR="$SCRIPT_DIR/githooks"
 BREWFILE="$SCRIPT_DIR/Brewfile"
+PNPM_GLOBALS="$SCRIPT_DIR/pnpm-globals.txt"
 BREW_BIN="/opt/homebrew/bin/brew"
 BREW_INSTALL_URL="https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh"
 ZPROFILE="$HOME/.zprofile"
@@ -108,7 +114,42 @@ else
   brew bundle install --file="$BREWFILE"
 fi
 
-# ---- 5. Starship prompt ------------------------------------------------------
+# ---- 5. Global CLI tools via pnpm (from pnpm-globals.txt) ---------------------
+# Why pnpm: see pnpm-globals.txt. These are NOT covered by `brew upgrade`;
+# doctor.sh upgrades them separately (pnpm update -g).
+say "Checking pnpm global tools (pnpm-globals.txt)"
+if [[ ! -f "$PNPM_GLOBALS" ]]; then
+  todo "pnpm-globals.txt missing next to install.sh"
+elif ! command -v pnpm >/dev/null 2>&1; then
+  todo "install pnpm global tools (needs pnpm from the Brewfile first)"
+else
+  # pnpm refuses global installs until its global bin dir is on PATH.
+  if ! pnpm bin -g >/dev/null 2>&1; then
+    if $CHECK_ONLY; then
+      todo "run: pnpm setup   (puts pnpm's global bin dir on PATH via ~/.zshrc)"
+    else
+      pnpm setup
+      export PNPM_HOME="$HOME/Library/pnpm"
+      export PATH="$PNPM_HOME/bin:$PNPM_HOME:$PATH"
+    fi
+  fi
+  if pnpm bin -g >/dev/null 2>&1; then
+    installed_globals="$(pnpm ls -g --depth=0 2>/dev/null || true)"
+    while IFS= read -r pkg; do
+      pkg="${pkg%%#*}"; pkg="${pkg//[[:space:]]/}"
+      [[ -n "$pkg" ]] || continue
+      if grep -qF "$pkg" <<<"$installed_globals"; then
+        ok "$pkg installed"
+      elif $CHECK_ONLY; then
+        todo "install with pnpm: pnpm add -g --ignore-scripts $pkg"
+      else
+        pnpm add -g --ignore-scripts "$pkg"
+      fi
+    done < "$PNPM_GLOBALS"
+  fi
+fi
+
+# ---- 6. Starship prompt ------------------------------------------------------
 say "Checking Starship prompt (~/.zshrc)"
 append_once "$ZSHRC" "$STARSHIP_LINE"
 if [[ -f "$ZSHRC" ]] && grep -Eq 'starship init (bash|fish)' "$ZSHRC"; then
@@ -119,7 +160,7 @@ fi
 # an install dialog, so only touch git once a real one is present.
 git_usable() { xcode-select -p >/dev/null 2>&1 || [[ -x /opt/homebrew/bin/git ]]; }
 
-# ---- 6. Git hooks (secret scan + commit message convention) ------------------
+# ---- 7. Git hooks (secret scan + commit message convention) ------------------
 say "Checking git hooks (global core.hooksPath -> $HOOKS_DIR)"
 if [[ ! -d "$HOOKS_DIR" ]]; then
   todo "githooks/ folder missing next to install.sh"
@@ -140,7 +181,7 @@ else
   fi
 fi
 
-# ---- 7. Reminders (never changed automatically) ------------------------------
+# ---- 8. Reminders (never changed automatically) ------------------------------
 say "Checking git identity and GitHub login"
 if git_usable; then
   [[ -n "$(git config --global user.name  || true)" ]] && ok "git user.name set"  || todo 'git config --global user.name "Your Name"'
@@ -159,3 +200,4 @@ else
   [[ $TODO_COUNT -gt 0 ]] && echo "  $TODO_COUNT manual item(s) listed above."
 fi
 echo "  Weekly upkeep: ./doctor.sh status, then ./doctor.sh upgrade"
+echo "  (pnpm-installed tools like Pi are updated by doctor.sh too, not by brew alone)"

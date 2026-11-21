@@ -24,6 +24,7 @@ Then open a **new** terminal tab so the changes load. The script is safe to re-r
 | `install.sh` | The bootstrap script. Its header comment documents every step. |
 | `doctor.sh` | Day-to-day checks and upgrades: what's outdated, installed versions, patch one package. |
 | `Brewfile` | Single source of truth for every package and app that gets installed. |
+| `pnpm-globals.txt` | Global CLI tools installed with pnpm instead of brew (currently the Pi coding agent, pi.dev). |
 | `githooks/pre-commit` | Runs [gitleaks](https://github.com/gitleaks/gitleaks) on staged changes and blocks commits containing secrets. |
 | `githooks/commit-msg` | Enforces [Conventional Commits](https://www.conventionalcommits.org) (`feat: ...`, `fix(scope): ...`). |
 | `LICENSE` | MIT. |
@@ -64,7 +65,7 @@ To undo: `git config --global --unset core.hooksPath`.
 | `./doctor.sh` or `./doctor.sh status` | Refreshes Homebrew, then lists outdated packages, anything missing from the Brewfile, pending macOS updates, and `brew doctor` warnings. |
 | `./doctor.sh versions` | Installed version of every package in the Brewfile. |
 | `./doctor.sh info <pkg>` | Latest version of one package and whether you have it (e.g. `./doctor.sh info node`). |
-| `./doctor.sh upgrade` | Upgrades everything, then runs `brew cleanup` and `brew autoremove`. |
+| `./doctor.sh upgrade` | Upgrades everything (Homebrew, then pnpm globals), then runs `brew cleanup` and `brew autoremove`. |
 | `./doctor.sh upgrade <pkg>` | Upgrades just one package. |
 
 **Heard about a vulnerability?** Homebrew has no built-in vulnerability scanner, so start from the advisory. Run `./doctor.sh status` to see whether the fix has reached Homebrew yet. If it has, `./doctor.sh upgrade <pkg>` patches it. Homebrew can trail upstream releases by a few days.
@@ -77,6 +78,8 @@ A few things to know:
 - Homebrew doesn't cover macOS itself (`doctor.sh status` lists pending updates, but install them in System Settings), global npm packages, or project dependencies. Audit those with each project's own tooling.
 
 To add a tool, add it to the `Brewfile` and re-run `./install.sh`.
+
+**pnpm-managed tools (remember to update these with pnpm).** The Pi coding agent is installed with pnpm, not brew: pi.dev documents npm/pnpm as its official install, and the Homebrew formula is community-maintained and can lag new releases. `brew upgrade` does not touch it. Update with `./doctor.sh upgrade` (which runs `pnpm update -g`), or directly with `pnpm update -g`. `./doctor.sh status` lists outdated pnpm globals. To add another pnpm tool, add its package name to `pnpm-globals.txt` and re-run `./install.sh`.
 
 ## Requirements and assumptions
 

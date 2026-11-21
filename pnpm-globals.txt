@@ -1,0 +1,17 @@
+# Global CLI tools installed with pnpm instead of Homebrew. One npm package per
+# line; blank lines and # comments are ignored. Read by install.sh and doctor.sh.
+#
+# WHY pnpm and not brew for these:
+#   The tool's own site (pi.dev) documents npm/pnpm/curl/bun as the official
+#   install routes. A Homebrew formula exists (pi-coding-agent) but it is
+#   community-maintained and can lag behind new releases of a fast-moving tool.
+#
+# REMEMBER: `brew upgrade` does NOT update these. Update them with:
+#   ./doctor.sh upgrade     (does brew AND these)
+#   pnpm update -g
+# `./doctor.sh status` also lists outdated pnpm globals.
+#
+# Installed with --ignore-scripts, as pi.dev's own install command does.
+
+# Pi coding agent (https://pi.dev)
+@earendil-works/pi-coding-agent
